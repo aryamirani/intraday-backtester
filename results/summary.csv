@@ -1,0 +1,4 @@
+underlier,final_pnl,fills,rolls,max_drawdown,sharpe_like,avg_daily_pnl,pnl_std,fees
+NIFTY,-508.85,15764,7882,-555.6,-11.471,-24.23,33.53,0.0
+BANKNIFTY,-1477.0,17552,8776,-1536.05,-17.314,-70.33,64.49,0.0
+FINNIFTY,-357.45,2020,1010,-485.5,-9.238,-17.02,29.25,0.0

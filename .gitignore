@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.ipython/
+.jupyter_runtime/
+.jupyter_data/
+.DS_Store
+.ipynb_checkpoints/
+allData/
