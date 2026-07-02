@@ -8,9 +8,12 @@ single method.
 
 from .instruments import Instrument, parse_instrument
 from .core import Order, Side, Fill, Position, MarketSnapshot
-from .portfolio import Portfolio
+from .portfolio import Portfolio, VolatilityScaledCostModel
 from .engine import BacktestEngine, BacktestResult
-from .strategy import Strategy, NearestStraddle
+from .strategy import (
+    Strategy, NearestStraddle, TimeWeightedStraddle, WidenedStrangle,
+    STRATEGY_REGISTRY,
+)
 
 __all__ = [
     "Instrument",
@@ -21,8 +24,13 @@ __all__ = [
     "Position",
     "MarketSnapshot",
     "Portfolio",
+    "VolatilityScaledCostModel",
     "BacktestEngine",
     "BacktestResult",
     "Strategy",
     "NearestStraddle",
+    "TimeWeightedStraddle",
+    "WidenedStrangle",
+    "STRATEGY_REGISTRY",
 ]
+

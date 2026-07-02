@@ -1,0 +1,27 @@
+# Widened strangle — buys OTM options instead of ATM.
+#
+# Demonstrates asymmetric leg selection with no engine changes.
+#
+# Usage: python -m mft.run --config configs/widened_strangle.yaml
+
+strategy:
+  name: widened_strangle
+  params:
+    width: 2                    # 2 strikes away from ATM in each direction
+    hysteresis: 0.0
+
+engine:
+  lot_size: 1.0
+  max_position: 1
+
+cost_model:
+  type: static
+  per_unit_slippage: 0.0
+  fee_rate: 0.0
+
+data:
+  root: allData
+  underliers: [NIFTY, BANKNIFTY]
+
+output:
+  dir: results_strangle

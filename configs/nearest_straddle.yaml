@@ -1,0 +1,24 @@
+# Nearest-ATM straddle — the baseline strategy specified in the brief.
+#
+# Usage: python -m mft.run --config configs/nearest_straddle.yaml
+
+strategy:
+  name: nearest_straddle
+  params:
+    hysteresis: 0.0             # 0 = roll on every strike change (as specified)
+
+engine:
+  lot_size: 1.0                 # index points; use 50/15/40 for rupee PnL
+  max_position: 1
+
+cost_model:
+  type: static
+  per_unit_slippage: 0.0
+  fee_rate: 0.0
+
+data:
+  root: allData
+  underliers: [NIFTY, BANKNIFTY, FINNIFTY]
+
+output:
+  dir: results

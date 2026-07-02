@@ -1,0 +1,28 @@
+# Time-weighted straddle — rebalances every 60 seconds instead of every tick.
+#
+# This demonstrates the flexibility of the engine: a fundamentally different
+# strategy plugs in with zero engine changes.
+#
+# Usage: python -m mft.run --config configs/time_weighted.yaml
+
+strategy:
+  name: time_weighted_straddle
+  params:
+    rebalance_interval_s: 60    # check for a roll once per minute
+    hysteresis: 0.0
+
+engine:
+  lot_size: 1.0
+  max_position: 1
+
+cost_model:
+  type: static
+  per_unit_slippage: 0.0
+  fee_rate: 0.0
+
+data:
+  root: allData
+  underliers: [NIFTY, BANKNIFTY]
+
+output:
+  dir: results_time_weighted

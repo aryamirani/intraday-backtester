@@ -1,0 +1,29 @@
+# Realistic execution costs — uses volatility-scaled slippage.
+#
+# The dynamic cost model widens the simulated bid-ask spread during
+# high-volatility regimes, mimicking real market microstructure.
+#
+# Usage: python -m mft.run --config configs/realistic_costs.yaml
+
+strategy:
+  name: nearest_straddle
+  params:
+    hysteresis: 5.0             # add hysteresis since we're paying for rolls
+
+engine:
+  lot_size: 50                  # NIFTY lot size for rupee PnL
+  max_position: 1
+
+cost_model:
+  type: volatility_scaled
+  base_slippage: 0.5            # minimum half-spread in index points
+  vol_lookback: 60              # 60-second rolling window
+  vol_multiplier: 0.1           # scaling factor from vol to extra slippage
+  fee_rate: 0.0003              # 3 bps transaction fee
+
+data:
+  root: allData
+  underliers: [NIFTY, BANKNIFTY]
+
+output:
+  dir: results_realistic

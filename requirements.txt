@@ -5,3 +5,6 @@ pyarrow>=15.0
 tqdm>=4.66
 jupyter>=1.0
 pytest>=8.0
+streamlit>=1.35
+pyyaml>=6.0
+

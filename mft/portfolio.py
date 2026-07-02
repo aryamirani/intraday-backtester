@@ -84,3 +84,60 @@ class Portfolio:
 
     def open_symbols(self) -> list[str]:
         return [s for s, p in self.positions.items() if p.quantity]
+
+
+class VolatilityScaledCostModel(CostModel):
+    """Dynamic slippage that scales with recent futures volatility.
+
+    In reality, bid-ask spreads widen during high-volatility regimes. This
+    model captures that effect: slippage = ``base_slippage`` + ``vol_multiplier``
+    × recent_std(futures returns). The lookback window for the standard deviation
+    is configurable.
+
+    This plugs directly into ``Portfolio`` via the ``CostModel`` interface.
+
+    Parameters
+    ----------
+    base_slippage : float
+        Minimum half-spread in index points (applied always).
+    vol_lookback : int
+        Number of 1-second bars used to estimate recent volatility.
+    vol_multiplier : float
+        Scaling factor from realized vol to additional slippage.
+    fee_rate : float
+        Proportional fee on traded notional (same as base CostModel).
+    """
+
+    def __init__(self, base_slippage: float = 0.5, vol_lookback: int = 60,
+                 vol_multiplier: float = 0.1, fee_rate: float = 0.0):
+        super().__init__(per_unit_slippage=base_slippage, fee_rate=fee_rate)
+        self.base_slippage = base_slippage
+        self.vol_lookback = vol_lookback
+        self.vol_multiplier = vol_multiplier
+        self._recent_futures: list[float] = []
+
+    def update_futures(self, price: float) -> None:
+        """Call once per second with the current futures price to update the
+        rolling volatility estimate."""
+        self._recent_futures.append(price)
+        if len(self._recent_futures) > self.vol_lookback + 1:
+            self._recent_futures.pop(0)
+
+    def _current_vol(self) -> float:
+        import numpy as np
+        if len(self._recent_futures) < 2:
+            return 0.0
+        arr = np.array(self._recent_futures)
+        returns = np.diff(arr) / arr[:-1]
+        return float(np.std(returns))
+
+    def execution_price(self, mark: float, signed_qty: int) -> float:
+        vol = self._current_vol()
+        dynamic_slippage = self.base_slippage + self.vol_multiplier * vol * mark
+        direction = 1 if signed_qty > 0 else -1
+        return mark + direction * dynamic_slippage
+
+    def reset_day(self) -> None:
+        """Reset the rolling window at the start of each trading day."""
+        self._recent_futures.clear()
+

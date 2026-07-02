@@ -45,7 +45,9 @@ intraday-backtester/
 │   ├── NSE_20221102/
 │   └── ...
 ├── mft/
+├── configs/
 ├── tests/
+├── dashboard.py
 ├── README.md
 ├── report.ipynb
 └── ...
@@ -56,13 +58,16 @@ intraday-backtester/
 | `mft/instruments.py` | Parse `UNDERLIER+YYMMDD+STRIKE+CE/PE` filenames. |
 | `mft/data.py` | Tick CSV -> 1-second forward-filled price series; nearest-expiry selection; lazy per-strike loading (`DayMarket`). |
 | `mft/core.py` | `Order`, `Fill`, `Position`, `MarketSnapshot`. |
-| `mft/portfolio.py` | Signed positions, average cost, realized/unrealized PnL, configurable slippage/fees and lot size. |
+| `mft/portfolio.py` | Signed positions, average cost, realized/unrealized PnL, configurable slippage/fees, lot size, and **volatility-scaled cost model**. |
 | `mft/engine.py` | The strategy-agnostic 1-second event loop, day-end flatten, recording. |
-| `mft/strategy.py` | `Strategy` interface + `NearestStraddle`. |
+| `mft/strategy.py` | `Strategy` interface + `NearestStraddle` + `TimeWeightedStraddle` + `WidenedStrangle` + strategy registry. |
+| `mft/config.py` | **YAML/JSON config loader** — instantiate any registered strategy and cost model from a config file. |
+| `mft/optimize.py` | **Parallel parameter grid search** — sweep hysteresis (or any parameter) across N values using `ProcessPoolExecutor`. |
 | `mft/analytics.py` | Metrics (drawdown, Sharpe-like, round-trips, hold time) and matplotlib helpers. |
 | `mft/reconcile.py` | Recomputes PnL two ways independent of the engine (cash-flow identity + rebuilt per-second curve) and checks both agree to tolerance. |
 | `mft/attribution.py` | Exact, Greeks-free split of straddle PnL into directional (intrinsic) vs time/volatility (theta) components. |
-| `mft/run.py` | Orchestrates the full multi-day run and writes `results/`. |
+| `mft/run.py` | Orchestrates the full multi-day run; supports both CLI flags and `--config` for YAML-driven runs. |
+| `dashboard.py` | **Interactive Streamlit dashboard** — real-time parameter tuning with instant visual feedback. |
 | `report.ipynb` | The narrative report: reconciliation, cumulative PnL, drawdown, daily PnL, position timeline, trade microstructure, PnL attribution, and a "new strategy in ~10 lines" demo. |
 | `tests/test_independent.py` | An independent oracle (its own CSV reader, resampling, strategy and accounting) that reproduces the engine fill-for-fill, plus mutation and invariant tests. |
 
@@ -77,9 +82,60 @@ python -m mft.run --days 1        # 1-day smoke test
 jupyter notebook report.ipynb     # the report
 ```
 
+### Config-driven runs
+
+Instead of CLI flags, pass a YAML config to run any registered strategy:
+
+```bash
+python -m mft.run --config configs/nearest_straddle.yaml
+python -m mft.run --config configs/time_weighted.yaml
+python -m mft.run --config configs/widened_strangle.yaml
+python -m mft.run --config configs/realistic_costs.yaml
+```
+
+### Interactive dashboard
+
+```bash
+streamlit run dashboard.py
+```
+
+The Streamlit dashboard lets you:
+- Select any strategy and tune its parameters with sliders
+- Choose underliers, date range, and cost model interactively
+- View equity curves, drawdown, daily PnL, position timelines, and trade logs — all updated in real time
+
+### Parameter grid search
+
+Sweep a parameter in parallel to find sensitivity:
+
+```bash
+python -m mft.optimize --underlier NIFTY --param hysteresis --values 0 5 10 20 50 --workers 4
+```
+
 Useful flags: `--lot-size` (contract multiplier for a rupee view), `--slippage`,
 `--fee-rate` (transaction costs), `--hysteresis` (optional anti-whipsaw band; default 0
 gives the exact "always-nearest" behaviour).
+
+## Pluggable strategies
+
+The engine is **strategy-agnostic**. Three strategies ship out of the box:
+
+| Strategy | Description | Key parameter |
+|----------|-------------|---------------|
+| `NearestStraddle` | ATM straddle, roll on every strike change | `hysteresis` |
+| `TimeWeightedStraddle` | ATM straddle, roll only every N seconds | `rebalance_interval_s` |
+| `WidenedStrangle` | OTM strangle, legs offset N strikes from ATM | `width` |
+
+Adding a new strategy is a single class implementing `on_step()`. Register it in `STRATEGY_REGISTRY` and it's immediately available in configs, the CLI, and the dashboard.
+
+## Realistic execution modelling
+
+Two cost models are available:
+
+| Model | Description |
+|-------|-------------|
+| `CostModel` (static) | Fixed slippage + proportional fee. |
+| `VolatilityScaledCostModel` | Dynamic slippage that widens with recent futures volatility, simulating real bid-ask spread behaviour. |
 
 ## Design notes / assumptions
 
@@ -126,3 +182,14 @@ something is wrong — alongside structural invariant checks (position cap, flat
 complete straddle on every roll).
 
 Run the suite with `pytest -v` (or `python tests/test_independent.py`).
+
+**3. `enhancements`** — Multi-strategy pluggability, config-driven runs,
+interactive dashboard, parallel parameter optimization, and realistic execution modelling.
+This commit adds two additional strategies (`TimeWeightedStraddle` and `WidenedStrangle`) that
+plug into the engine with zero changes, proving agnosticism. A YAML/JSON config loader
+(`mft/config.py`) lets strategies be instantiated from config files. A Streamlit dashboard
+(`dashboard.py`) provides interactive parameter tuning with instant visual feedback. A parallel
+parameter grid search (`mft/optimize.py`) sweeps any strategy parameter using
+`ProcessPoolExecutor`. And a `VolatilityScaledCostModel` in `portfolio.py` dynamically adjusts
+slippage based on recent futures volatility, simulating realistic market microstructure.
+
